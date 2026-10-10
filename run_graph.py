@@ -32,6 +32,12 @@ RATES = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
 MAIN = ["MUSE", "GCN-zero", "GAT-zero", "APPNP-zero", "MMGL-style", "TMC", "ECD", "EGNN", "HeMIS"]
 ABLATIONS = ["MUSE-noProp", "MUSE-noAux", "MUSE-selfEvidence", "MUSE-induced", "MUSE-noGate", "MUSE-Dempster", "MUSE-zeroimpute", "MUSE-specVar", "MUSE-noVar"]
 GRID = {"lr": [1e-2, 5e-3], "wd": [5e-4, 5e-3], "dropout": [0.3, 0.6], "hidden": [64, 128]}
+# reduced grids (compute budget): every model not already fully tuned uses the same reduced grid;
+# baselines that completed the full grid keep it (conservative for MUSE).
+GRIDS = {"full": GRID,
+         "small": {"lr": [1e-2, 5e-3], "wd": [5e-4], "dropout": [0.3, 0.6], "hidden": [64, 128]},
+         "photo": {"lr": [1e-2], "wd": [5e-4], "dropout": [0.3, 0.6], "hidden": [64, 128]}}
+DESIGN = "results/muse_design.json"  # MUSE design choices fixed on validation (design studies)
 
 
 class ZeroImputeMUSE(MUSE):
@@ -43,11 +49,14 @@ class ZeroImputeMUSE(MUSE):
 
 
 def build(name, in_dims, C, hidden=64, dropout=0.6, aux=1.0, act="softplus", ce="logmean", lambda1=0.1,
-          prop_steps=10, aux_src="prop", **_):
+          prop_steps=10, aux_src=None, encoder=None, **_):
+    design = json.load(open(DESIGN)) if os.path.exists(DESIGN) else {}
+    aux_src = aux_src or design.get("aux_src", "prop")
+    encoder = encoder or design.get("encoder", "gatv2")
     kw = dict(hidden=hidden, dropout=dropout)
     mkw = dict(act=act, prop_steps=prop_steps)
     m = {
-        "MUSE": lambda: MUSE(in_dims, C, **kw, **mkw),
+        "MUSE": lambda: MUSE(in_dims, C, encoder=encoder, **kw, **mkw),
         "GCN-zero": lambda: GCNZero(in_dims, C, **kw),
         "GAT-zero": lambda: GATZero(in_dims, C, **kw),
         "MMGL-style": lambda: MMGLStyle(in_dims, C, **kw),
@@ -120,7 +129,7 @@ def run(dataset, model_name, seed, cfg, test=False, epochs=300, patience=60, K=4
     gt = torch.Generator().manual_seed(2000 + seed)
     with torch.no_grad():
         for r in RATES:
-            res["rates"][str(r)] = evaluate(model(xs, ei, sample_mask(N, K, r, gt).to(dev)), y, te)
+            res["rates"][str(r)] = evaluate(model(xs, ei, sample_mask(N, K, r, gt).to(dev)), y, te, bins=True)
         for size in range(1, K + 1):
             for pat in itertools.combinations(range(K), size):
                 res["patterns"]["".join(map(str, pat))] = evaluate(model(xs, ei, pattern_mask(N, pat, K).to(dev)), y, te)
@@ -129,13 +138,13 @@ def run(dataset, model_name, seed, cfg, test=False, epochs=300, patience=60, K=4
     return res
 
 
-def grid():
-    keys = list(GRID)
-    return [dict(zip(keys, v)) for v in itertools.product(*GRID.values())]
+def grid(name="full"):
+    g = GRIDS[name]
+    return [dict(zip(g, v)) for v in itertools.product(*g.values())]
 
 
 def cfg_key(c):
-    return "_".join(f"{k}{c[k]}" for k in GRID)
+    return "_".join(f"{k}{c[k]}" for k in list(GRID) + (["prop_steps"] if "prop_steps" in c else []))
 
 
 if __name__ == "__main__":
@@ -144,6 +153,7 @@ if __name__ == "__main__":
     ap.add_argument("--datasets", default="Cora,CiteSeer,Photo")
     ap.add_argument("--models", default=",".join(MAIN))
     ap.add_argument("--seeds", default=None)
+    ap.add_argument("--grid", default="full", choices=list(GRIDS))
     a = ap.parse_args()
     datasets, models = a.datasets.split(","), a.models.split(",")
 
@@ -152,7 +162,10 @@ if __name__ == "__main__":
         seeds = [int(s) for s in (a.seeds or "0,1").split(",")]
         for ds in datasets:
             for mn in models:
-                for c in grid():
+                # MUSE: evidence propagation on/off is a tuned hyperparameter (same total
+                # budget as the fully-tuned baselines: 8-config grid x 2 = 16)
+                cfgs = [{**c, "prop_steps": p} for c in grid(a.grid) for p in (10, 0)] if mn == "MUSE" else grid(a.grid)
+                for c in cfgs:
                     for s in seeds:
                         f = f"results/tune/{ds}_{mn}_{cfg_key(c)}_{s}.json"
                         if os.path.exists(f):
@@ -181,7 +194,7 @@ if __name__ == "__main__":
     else:  # final
         os.makedirs("results/final", exist_ok=True)
         configs = json.load(open("results/configs.json"))
-        seeds = [int(s) for s in (a.seeds or ",".join(map(str, range(100, 110)))).split(",")]
+        seeds = [int(s) for s in (a.seeds or ",".join(map(str, range(100, 105)))).split(",")]
         for ds in datasets:
             for mn in models:
                 # ablations reuse the selected MUSE config (no extra tuning)

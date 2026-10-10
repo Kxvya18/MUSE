@@ -62,12 +62,14 @@ def main():
     ap.add_argument("--baseline", default="GAT-zero")
     ap.add_argument("--seed", type=int, default=100)
     ap.add_argument("--n", type=int, default=3)
+    ap.add_argument("--results", default="results/brats", help="dir with final_<model>_<seed>.json")
+    ap.add_argument("--tag", default="")
     a = ap.parse_args()
     dev = "cpu"
     split, get = load_split(ROOT)
     cfgs = {}
     for name in ("MUSE", a.baseline):
-        r = json.load(open(f"results/brats/final_{name}_{a.seed}.json"))
+        r = json.load(open(f"{a.results}/final_{name}_{a.seed}.json"))
         cfgs[name] = r["cfg"]
     muse, base = load_model("MUSE", cfgs["MUSE"], a.seed, dev), load_model(a.baseline, cfgs[a.baseline], a.seed, dev)
     cases = a.cases.split(",") if a.cases else split["test"][: a.n]
@@ -134,7 +136,7 @@ def main():
                    loc="lower center", ncol=3, fontsize=8, frameon=False, bbox_to_anchor=(0.45, -0.01))
         fig.tight_layout(rect=(0, 0.04, 1, 1))
         for ext in ("pdf", "png"):
-            fig.savefig(f"figures/mri/{case}_panel.{ext}", dpi=200, bbox_inches="tight")
+            fig.savefig(f"figures/mri/{case}_panel{a.tag}.{ext}", dpi=200, bbox_inches="tight")
         plt.close(fig)
         print("wrote", case)
 
