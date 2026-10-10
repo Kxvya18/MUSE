@@ -35,6 +35,23 @@ def cube_view(vol, c):
     return v.transpose(0, 2, 4, 1, 3, 5)
 
 
+def crop_and_normalise(img, lab, c):
+    """Crop to the brain bounding box padded to a multiple of c; z-score each modality
+    inside the brain. Shared with the figure scripts so images align with node grids."""
+    brain = img.max(-1) > 0
+    idx = np.argwhere(brain)
+    lo, hi = idx.min(0), idx.max(0) + 1
+    hi = hi + (-(hi - lo)) % c
+    shift = np.maximum(hi - np.array(img.shape[:3]), 0)
+    lo, hi = lo - shift, hi - shift
+    sl = tuple(slice(a, b) for a, b in zip(lo, hi))
+    img, lab, brain = img[sl].copy(), lab[sl], brain[sl]
+    for m in range(4):
+        v = img[..., m][brain]
+        img[..., m] = np.where(brain, (img[..., m] - v.mean()) / (v.std() + 1e-6), 0)
+    return img, lab, brain
+
+
 def process(args):
     path, c, out = args
     case = os.path.basename(path).replace(".nii.gz", "")
@@ -43,22 +60,7 @@ def process(args):
         return case
     img = np.asarray(nib.load(path).dataobj, dtype=np.float32)  # X,Y,Z,4
     lab = np.asarray(nib.load(path.replace("imagesTr", "labelsTr")).dataobj).astype(np.uint8)
-    brain = img.max(-1) > 0
-    # crop to brain bbox, pad to a multiple of c
-    idx = np.argwhere(brain)
-    lo, hi = idx.min(0), idx.max(0) + 1
-    shape = hi - lo
-    pad = (-shape) % c
-    hi = hi + pad
-    big = np.array(img.shape[:3])
-    shift = np.maximum(hi - big, 0)
-    lo, hi = lo - shift, hi - shift
-    sl = tuple(slice(a, b) for a, b in zip(lo, hi))
-    img, lab, brain = img[sl], lab[sl], brain[sl]
-    # z-score each modality inside the brain
-    for m in range(4):
-        v = img[..., m][brain]
-        img[..., m] = np.where(brain, (img[..., m] - v.mean()) / (v.std() + 1e-6), 0)
+    img, lab, brain = crop_and_normalise(img, lab, c)
     # node labels: 5 classes
     lab5 = np.where(brain, 1, 0).astype(np.uint8)
     lab5[lab == 1] = 2

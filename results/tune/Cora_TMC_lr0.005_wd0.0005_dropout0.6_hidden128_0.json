@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "TMC", "seed": 0, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.6, "hidden": 128}, "val": 0.7753333250681559, "epochs": 203, "time": 221.53396892547607}
