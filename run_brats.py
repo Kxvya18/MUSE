@@ -189,6 +189,7 @@ if __name__ == "__main__":
     ap.add_argument("--root", default="data/brats_graphs_c4")
     ap.add_argument("--models", default=",".join(MAIN))
     ap.add_argument("--seeds", default=None)
+    ap.add_argument("--cfg", default='{"lr": 0.001, "wd": 0.0005, "dropout": 0.2, "hidden": 64}')
     a = ap.parse_args()
     grid = [dict(lr=lr, wd=wd, dropout=d, hidden=h) for lr in (5e-3, 1e-3) for wd in (5e-4,)
             for d in (0.2, 0.5) for h in (64,)]
@@ -206,21 +207,17 @@ if __name__ == "__main__":
                 json.dump({"model": mn, "cfg": cfg, "val": v, "time": time.time() - t}, open(f, "w"))
                 print(f"[tune] {mn:14s} {cfg} val_f1={v:.4f} ({time.time()-t:.0f}s)", flush=True)
     else:
-        import glob
-        tuned = {}
-        for f in glob.glob("results/brats/tune_*.json"):
-            r = json.load(open(f))
-            if r["model"] not in tuned or r["val"] > tuned[r["model"]]["val"]:
-                tuned[r["model"]] = r
+        # every method uses the same fixed configuration (no per-method MRI tuning; compute
+        # budget), with early stopping on validation patients.
+        cfg = json.loads(a.cfg)
         seeds = [int(s) for s in (a.seeds or "100,101,102").split(",")]
         for mn in a.models.split(","):
-            cfg = tuned.get(mn, tuned["MUSE"])["cfg"]
             for s in seeds:
                 f = f"results/brats/final_{mn}_{s}.json"
                 if os.path.exists(f):
                     continue
                 t = time.time()
-                model, v = train(mn, cfg, s, a.root, log=log)
+                model, v = train(mn, cfg, s, a.root, epochs=12, patience=4, log=log)
                 r = {"model": mn, "seed": s, "cfg": cfg, "val": v, "test": test(model, a.root)}
                 r["time"] = time.time() - t
                 os.makedirs("checkpoints", exist_ok=True)

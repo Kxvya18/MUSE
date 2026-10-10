@@ -11,3 +11,4 @@ install.log
 .DS_Store
 results/smoke/
 diag*.py
+.gitlock/

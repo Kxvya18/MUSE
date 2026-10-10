@@ -27,7 +27,18 @@ def ece(prob: torch.Tensor, y: torch.Tensor, bins: int = 15) -> float:
     return e
 
 
-def evaluate(out, y, idx):
+def reliability(prob, y, bins=15):
+    conf, pred = prob.max(-1)
+    acc = (pred == y).float()
+    edges = torch.linspace(0, 1, bins + 1)
+    rows = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        s = (conf > lo) & (conf <= hi)
+        rows.append([int(s.sum()), acc[s].mean().item() if s.any() else 0.0, conf[s].mean().item() if s.any() else 0.0])
+    return rows  # [count, accuracy, mean confidence] per bin
+
+
+def evaluate(out, y, idx, bins=False):
     prob, unc = outputs_to_prob_unc(out)
     prob, unc, yy = prob[idx].detach().cpu(), unc[idx].detach().cpu(), y[idx].cpu()
     pred = prob.argmax(-1)
@@ -37,7 +48,7 @@ def evaluate(out, y, idx):
         auroc = roc_auc_score((~correct).numpy(), unc.numpy()) if 0 < correct.sum() < len(yy) else float("nan")
     except ValueError:
         auroc = float("nan")
-    return {
+    res = {
         "acc": correct.float().mean().item(),
         "f1": f1_score(yy.numpy(), pred.numpy(), average="macro"),
         "ece": ece(prob, yy),
@@ -45,3 +56,6 @@ def evaluate(out, y, idx):
         "auroc_err": auroc,
         "unc": unc.mean().item(),
     }
+    if bins:
+        res["reliability"] = reliability(prob, yy)
+    return res
