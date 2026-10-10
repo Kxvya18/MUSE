@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "HeMIS", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 64}, "val": 0.7333333492279053, "epochs": 101, "time": 208.7959921360016}

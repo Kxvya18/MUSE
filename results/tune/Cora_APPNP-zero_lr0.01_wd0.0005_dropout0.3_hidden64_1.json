@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "APPNP-zero", "seed": 1, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 64}, "val": 0.8066666722297668, "epochs": 91, "time": 40.01220417022705}

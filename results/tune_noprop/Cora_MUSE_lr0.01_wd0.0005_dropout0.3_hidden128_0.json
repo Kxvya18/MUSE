@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "MUSE", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 128}, "val": 0.7753333250681559, "epochs": 148, "time": 306.67703080177307}

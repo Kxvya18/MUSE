@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "GAT-zero", "seed": 1, "cfg": {"lr": 0.01, "wd": 0.005, "dropout": 0.6, "hidden": 64}, "val": 0.7900000214576721, "epochs": 114, "time": 34.72466325759888}

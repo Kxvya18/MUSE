@@ -1,0 +1,13 @@
+.venv/
+.tex/
+data/
+checkpoints/
+__pycache__/
+*.pyc
+.pytest_cache/
+logs_*.txt
+install.log
+*.pt
+.DS_Store
+results/smoke/
+diag*.py

@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "GCN-zero", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.005, "dropout": 0.3, "hidden": 128}, "val": 0.7800000111262003, "epochs": 96, "time": 61.74261283874512}
