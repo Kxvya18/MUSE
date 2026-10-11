@@ -5,7 +5,8 @@ cubes over the brain bounding box (no intensity-driven clustering, which would l
 information from modalities that may be missing at inference), edges are the
 6-connected cube lattice. Each modality (FLAIR, T1, T1gd, T2) gets its own node
 feature vector computed only from that modality's voxels in the cube:
-  mean, std, min, max, 10/25/50/75/90th percentiles, and the 8 octant means (17 dims),
+  mean, std, min, max, 10/25/50/75/90th percentiles, the 8 octant means (17 dims), and
+  multi-scale context: mean/std of cube means over 3^3, 5^3, 9^3 neighbourhoods (6 dims),
 after per-patient z-scoring inside the brain mask.
 
 Node classes (frame of discernment, 5 classes):
@@ -86,7 +87,22 @@ def process(args):
         feats.append(np.concatenate([flat.mean(1, keepdims=True), flat.std(1, keepdims=True),
                                      flat.min(1, keepdims=True), flat.max(1, keepdims=True), q,
                                      np.stack(octs, 1)], 1))
-    feats = np.stack(feats, 1).astype(np.float32)  # n, 4, 17
+    # multi-scale context (per modality, so no cross-modality leakage): mean and spread of
+    # cube means over 3^3, 5^3 and 9^3 cube neighbourhoods (12-36 mm), brain cubes only
+    from scipy.ndimage import uniform_filter
+    w = keep.astype(np.float32)
+    ctx = []
+    for m in range(4):
+        cm = np.zeros(keep.shape, np.float32)
+        cm[keep] = feats[m][:, 0]
+        cols = []
+        for size in (3, 5, 9):
+            den = uniform_filter(w, size, mode="constant") + 1e-6
+            mu = uniform_filter(cm * w, size, mode="constant") / den
+            sq = uniform_filter(cm ** 2 * w, size, mode="constant") / den
+            cols += [mu[keep], np.sqrt(np.maximum(sq - mu ** 2, 0))[keep]]
+        ctx.append(np.stack(cols, 1))
+    feats = np.concatenate([np.stack(feats, 1), np.stack(ctx, 1)], 2).astype(np.float32)  # n, 4, 23
     # 6-connected lattice edges (both directions)
     edges = []
     for ax in range(3):
@@ -110,7 +126,7 @@ if __name__ == "__main__":
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
-    out = f"data/brats_graphs_c{a.cube}"
+    out = f"data/brats_graphs_c{a.cube}_ms"
     os.makedirs(out, exist_ok=True)
     files = sorted(glob.glob(os.path.join(SRC, "imagesTr", "BRATS_*.nii.gz")))
     if a.limit:
