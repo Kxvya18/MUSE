@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "MMGL-style", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 128}, "val": 0.837499996026357, "epochs": 240, "time": 4141.269615888596}

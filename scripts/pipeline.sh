@@ -10,16 +10,17 @@ MAINB=GCN-zero,GAT-zero,APPNP-zero,MMGL-style,TMC,ECD,EGNN,HeMIS
 ABL=MUSE-noProp,MUSE-noAux,MUSE-selfEvidence,MUSE-induced,MUSE-noGate,MUSE-Dempster,MUSE-zeroimpute,MUSE-specVar,MUSE-noVar,MUSE-MLP
 
 graph_lane(){
+  # one graph job at a time (the MRI lane runs alongside); concurrent jobs exhausted RAM -> swap filled the disk
   log "graph: tuning Cora (MUSE + remaining baselines, small grid)"
-  python run_graph.py tune --datasets Cora --models MUSE --grid small > logs_g_tune1.txt 2>&1 &
+  python run_graph.py tune --datasets Cora --models MUSE --grid small > logs_g_tune1.txt 2>&1
   python run_graph.py tune --datasets Cora --models TMC,HeMIS,MMGL-style,ECD,EGNN --grid small > logs_g_tune2.txt 2>&1
   wait
   log "graph: tuning CiteSeer (small grid)"
-  python run_graph.py tune --datasets CiteSeer --models MUSE --grid small > logs_g_tune3.txt 2>&1 &
+  python run_graph.py tune --datasets CiteSeer --models MUSE --grid small > logs_g_tune3.txt 2>&1
   python run_graph.py tune --datasets CiteSeer --models $MAINB --grid small > logs_g_tune4.txt 2>&1
   wait
   log "graph: tuning Photo (photo grid, seed 0)"
-  python run_graph.py tune --datasets Photo --models MUSE --grid photo --seeds 0 > logs_g_tune5.txt 2>&1 &
+  python run_graph.py tune --datasets Photo --models MUSE --grid photo --seeds 0 > logs_g_tune5.txt 2>&1
   python run_graph.py tune --datasets Photo --models $MAINB --grid photo --seeds 0 > logs_g_tune6.txt 2>&1
   wait
   python run_graph.py select > results/configs_selected.txt 2>&1
@@ -27,7 +28,7 @@ graph_lane(){
   pr results/graph-tuning "Graph benchmarks: validation tuning results and selected configs" \
      "Validation-only grid search on Cora/CiteSeer/Photo; best config per (dataset, model) in results/configs.json. Test set not touched."
   log "graph: final runs (5 seeds)"
-  python run_graph.py final --datasets Cora,CiteSeer,Photo --models $MAIN > logs_g_final1.txt 2>&1 &
+  python run_graph.py final --datasets Cora,CiteSeer,Photo --models $MAIN > logs_g_final1.txt 2>&1
   python run_graph.py final --datasets Cora,CiteSeer --models $ABL > logs_g_final2.txt 2>&1
   wait
   log "graph: order-dependence analysis"

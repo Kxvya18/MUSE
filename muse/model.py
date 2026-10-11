@@ -129,7 +129,8 @@ class MUSE(nn.Module):
     def __init__(self, in_dims: list[int], num_classes: int, hidden: int = 64, heads: int = 4,
                  dropout: float = 0.6, in_dropout: float | None = None, use_gate: bool = True,
                  combiner: str = "sum", mp: str = "observed", evidence: str = "neighbourhood",
-                 act: str = "softplus", prop_steps: int = 10, teleport: float = 0.1, encoder: str = "gatv2"):
+                 act: str = "softplus", prop_steps: int = 10, teleport: float = 0.1, encoder: str = "gatv2",
+                 norm: bool = True):
         super().__init__()
         self.K, self.C, self.F = len(in_dims), num_classes, hidden
         self.use_gate, self.combiner, self.mp, self.evidence = use_gate, combiner, mp, evidence
@@ -140,6 +141,10 @@ class MUSE(nn.Module):
         else:
             self.encoders = nn.ModuleList([GATv2Encoder(d, hidden, heads, dropout, in_dropout) for d in in_dims])
         self.heads = nn.ModuleList([EvidentialHead(hidden, num_classes, act) for _ in in_dims])
+        # per-modality LayerNorm on encoder outputs: makes each source's evidence invariant
+        # to its input scale (without it, low-magnitude modalities give near-constant
+        # embeddings and vanishing evidence gradients, e.g. dense bag-of-words on Photo)
+        self.norms = nn.ModuleList([nn.LayerNorm(hidden) if norm else nn.Identity() for _ in in_dims])
         self.gates = nn.ModuleList([ReliabilityGate(hidden, num_classes) for _ in in_dims])
 
     def encode(self, xs, edge_index, mask):
@@ -202,6 +207,7 @@ class MUSE(nn.Module):
         """
         N = mask.size(0)
         H, avail = self.encode(xs, edge_index, mask)
+        H = torch.stack([self.norms[k](H[k]) for k in range(self.K)])
         m = avail.t().unsqueeze(-1).float()  # [K, N, 1]: 1 where k yields evidence
         o = mask.t().unsqueeze(-1).float()   # [K, N, 1]: 1 where node observed k itself
         # Component 2/3: evidential head on present modalities, vacuous alpha=1 otherwise.
