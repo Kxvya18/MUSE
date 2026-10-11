@@ -97,7 +97,9 @@ def voxel_dice(case_root, case, node_pred):
 def train(model_name, cfg, seed, root, epochs=40, B=4, dev="mps", patience=8, log=None):
     torch.manual_seed(seed); np.random.seed(seed)
     split, get = load_split(root)
-    model, loss_fn = build(model_name, [17] * K, 5, **cfg)
+    split_, get_ = load_split(root)
+    F_in = get_(split_["train"][0])["x"].size(-1)
+    model, loss_fn = build(model_name, [F_in] * K, 5, **cfg)
     model = model.to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg["lr"], weight_decay=cfg["wd"])
     tr = split["train"]
@@ -186,7 +188,7 @@ def test(model, root, dev="mps"):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("stage", choices=["tune", "final"])
-    ap.add_argument("--root", default="data/brats_graphs_c4")
+    ap.add_argument("--root", default="data/brats_graphs_c4_ms")
     ap.add_argument("--models", default=",".join(MAIN))
     ap.add_argument("--seeds", default=None)
     ap.add_argument("--cfg", default='{"lr": 0.001, "wd": 0.0005, "dropout": 0.2, "hidden": 64}')

@@ -8,7 +8,7 @@ until mkdir .gitlock 2>/dev/null; do sleep 15; done
 trap 'git checkout -q main 2>/dev/null; rmdir .gitlock' EXIT
 git checkout -q main && git pull -q
 git checkout -q -B "$1"
-git add -A results figures paper 2>/dev/null || true
+for d in results figures paper; do [ -e "$d" ] && git add -A "$d"; done
 if git diff --cached --quiet; then exit 0; fi
 nfiles=$(git diff --cached --name-only | wc -l | tr -d ' ')
 codechg=$(git diff --cached --name-only | grep -vE '^(results|figures/(results|mri)|paper)/' || true)

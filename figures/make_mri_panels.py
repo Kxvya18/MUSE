@@ -25,7 +25,7 @@ from run_brats import load_split, batch, pattern_tensor, MOD  # noqa: E402
 from run_graph import build  # noqa: E402
 from muse.metrics import outputs_to_prob_unc  # noqa: E402
 
-ROOT, SRC = "data/brats_graphs_c4", "data/Task01_BrainTumour/imagesTr"
+ROOT, SRC = "data/brats_graphs_c4_ms", "data/Task01_BrainTumour/imagesTr"
 # 0 bg, 1 healthy, 2 edema, 3 necrotic/non-enhancing core, 4 enhancing
 SEG = ListedColormap([(0, 0, 0, 0), (0, 0, 0, 0), "#2ca02c", "#d62728", "#ffd21f"])
 PATTERNS = {"all four": (0, 1, 2, 3), "T1gd absent": (0, 1, 3), "FLAIR + T2": (0, 3), "FLAIR only": (0,)}
@@ -38,7 +38,7 @@ def paint(coords, values, shape, c):
 
 
 def load_model(name, cfg, seed, dev):
-    model, _ = build(name, [17] * 4, 5, **cfg)
+    model, _ = build(name, [23] * 4, 5, **cfg)
     model.load_state_dict(torch.load(f"checkpoints/brats_{name}_{seed}.pt", map_location=dev))
     return model.to(dev).eval()
 

@@ -38,13 +38,13 @@ graph_lane(){
 }
 
 mri_lane(){
-  log "mri: waiting for preview runs"
-  while pgrep -f preview_brats.py > /dev/null; do sleep 60; done
-  mkdir -p results/brats
-  for m in MUSE GAT-zero; do [ -f results/brats_preview/final_${m}_100.json ] && cp -n results/brats_preview/final_${m}_100.json results/brats/; done
-  python figures/make_mri_panels.py --results results/brats_preview --tag _preview --n 3 >> $L 2>&1 || log "preview panels failed"
-  pr results/mri-preview "MRI: preview qualitative panels (MUSE vs GAT-zero, seed 100)" \
-     "Real FLAIR/T1/T1gd/T2 slices with ground truth, MUSE segmentation and uncertainty, GAT-zero segmentation and per-sequence contributions for 4 missing-sequence patterns on held-out patients."
+  log "mri: building multi-scale supervoxel graphs"
+  python preprocess_brats.py --cube 4 --workers 4 > logs_preprocess_ms.txt 2>&1
+  log "mri: MUSE and GAT-zero (seed 100) for qualitative panels"
+  python run_brats.py final --models MUSE,GAT-zero --seeds 100 > logs_m_final0.txt 2>&1
+  python figures/make_mri_panels.py --baseline GAT-zero --n 4 >> $L 2>&1 || log "panels failed"
+  pr results/mri-panels "MRI: qualitative panels (MUSE vs GAT-zero, seed 100)" \
+     "Real FLAIR/T1/T1gd/T2 slices with ground truth, MUSE segmentation and uncertainty, GAT-zero segmentation and per-sequence contributions for 4 missing-sequence patterns on held-out patients (multi-scale features)."
   log "mri: final runs, all methods, seeds 100-102"
   python run_brats.py final --models $MAIN --seeds 100,101,102 > logs_m_final.txt 2>&1
   log "mri: ablations, seed 100"
@@ -54,7 +54,7 @@ mri_lane(){
   log "mri lane done"
 }
 
-log "pipeline start"
+log "pipeline (re)start"
 graph_lane &
 mri_lane &
 wait
