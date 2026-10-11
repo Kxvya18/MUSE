@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "TMC", "seed": 0, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.6, "hidden": 128}, "val": 0.6646666725476583, "epochs": 148, "time": 177.9365839958191}

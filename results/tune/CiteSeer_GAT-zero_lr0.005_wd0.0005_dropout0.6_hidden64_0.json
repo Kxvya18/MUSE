@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "GAT-zero", "seed": 0, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.6, "hidden": 64}, "val": 0.6726666688919067, "epochs": 89, "time": 33.712910175323486}

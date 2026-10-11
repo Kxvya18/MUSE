@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "GCN-zero", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 128}, "val": 0.8972222208976746, "epochs": 265, "time": 211.41591000556946}

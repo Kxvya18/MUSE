@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "GCN-zero", "seed": 0, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.3, "hidden": 128}, "val": 0.6833333373069763, "epochs": 86, "time": 25.561349868774414}

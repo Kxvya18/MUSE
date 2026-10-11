@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "APPNP-zero", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.6, "hidden": 64}, "val": 0.8791666626930237, "epochs": 265, "time": 108.31587815284729}
