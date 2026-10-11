@@ -1,0 +1,12 @@
+  ep0 val_f1=0.2827
+  ep1 val_f1=0.2912
+  ep2 val_f1=0.2851
+  ep3 val_f1=0.3184
+  ep4 val_f1=0.3603
+  ep5 val_f1=0.3552
+  ep6 val_f1=0.3502
+  ep7 val_f1=0.3516
+  ep8 val_f1=0.3636
+  ep9 val_f1=0.3698
+  ep10 val_f1=0.3561
+  ep11 val_f1=0.3581

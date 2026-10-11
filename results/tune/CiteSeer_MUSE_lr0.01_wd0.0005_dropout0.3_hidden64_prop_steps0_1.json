@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "MUSE", "seed": 1, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 64, "prop_steps": 0}, "val": 0.6066666642824808, "epochs": 150, "time": 84.05529808998108}

@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "MMGL-style", "seed": 1, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.3, "hidden": 64}, "val": 0.6833333373069763, "epochs": 168, "time": 60.5281879901886}

@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "APPNP-zero", "seed": 1, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 64}, "val": 0.706000010172526, "epochs": 83, "time": 19.377683877944946}

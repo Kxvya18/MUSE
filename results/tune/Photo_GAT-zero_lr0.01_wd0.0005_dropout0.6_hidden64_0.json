@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "GAT-zero", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.6, "hidden": 64}, "val": 0.899999996026357, "epochs": 215, "time": 478.06686210632324}

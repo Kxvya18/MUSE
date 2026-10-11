@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "MMGL-style", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.6, "hidden": 128}, "val": 0.6286666790644327, "epochs": 130, "time": 206.07358503341675}
