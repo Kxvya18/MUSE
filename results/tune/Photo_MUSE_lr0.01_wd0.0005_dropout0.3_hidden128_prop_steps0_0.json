@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "MUSE", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 128, "prop_steps": 0}, "val": 0.8958333134651184, "epochs": 160, "time": 4974.452131986618}
