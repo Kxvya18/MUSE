@@ -28,6 +28,10 @@ from muse.baselines import GCNZero, GATZero, MMGLStyle, TMC, ECD, EGNN, HeMIS, A
 from muse.data import load_graph, sample_mask, pattern_mask
 from muse.metrics import evaluate
 
+def auto_device():
+    return "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+
+
 RATES = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
 MAIN = ["MUSE", "GCN-zero", "GAT-zero", "APPNP-zero", "MMGL-style", "TMC", "ECD", "EGNN", "HeMIS"]
 ABLATIONS = ["MUSE-noProp", "MUSE-noAux", "MUSE-selfEvidence", "MUSE-induced", "MUSE-noGate", "MUSE-Dempster", "MUSE-zeroimpute", "MUSE-specVar", "MUSE-noVar"]
@@ -91,8 +95,9 @@ def build(name, in_dims, C, hidden=64, dropout=0.6, aux=1.0, act="softplus", ce=
     return m, loss
 
 
-def run(dataset, model_name, seed, cfg, test=False, epochs=300, patience=60, K=4, dev="mps", eval_every=None):
+def run(dataset, model_name, seed, cfg, test=False, epochs=300, patience=60, K=4, dev=None, eval_every=None):
     eval_every = eval_every or (5 if dataset == "Photo" else 1)
+    dev = dev or auto_device()
     torch.manual_seed(seed); np.random.seed(seed)
     data, xs = load_graph(dataset, K, split_seed=seed)
     xs = [x.to(dev) for x in xs]
