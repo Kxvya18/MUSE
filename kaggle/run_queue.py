@@ -42,6 +42,18 @@ def push(a, model):
                     "results/mri3d"], check=False)
 
 
+def push_failure(a, model, seed):
+    """Put the end of a failed model's log on GitHub so the error can be read without Kaggle access."""
+    os.makedirs("results/mri3d/failures", exist_ok=True)
+    log = os.path.join(a.runs, f"log_{model}_s{seed}.txt")
+    tail = open(log).read().splitlines()[-80:] if os.path.exists(log) else ["(no log found)"]
+    open(f"results/mri3d/failures/{model}_s{seed}.txt", "w").write("\n".join(tail) + "\n")
+    stamp = time.strftime("%Y%m%d-%H%M")
+    subprocess.run([sys.executable, "scripts/colab_pr.py", f"results/kaggle-failure-{model}-{stamp}",
+                    f"MRI run failed: {model} (log tail)", "Last 80 lines of the training/test log, pushed automatically.",
+                    "results/mri3d/failures"], check=False)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="/kaggle/working/runs")
@@ -66,6 +78,8 @@ def main():
                 del running[gpu]
                 if p.returncode == 0:
                     push(a, m)
+                else:
+                    push_failure(a, m, a.seed)
     print("queue complete", flush=True)
 
 
