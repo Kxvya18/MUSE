@@ -39,7 +39,7 @@ def preprocess_case(args):
     for k in range(4):
         v = img[..., k][brain]
         img[..., k] = np.where(brain, (img[..., k] - v.mean()) / (v.std() + 1e-6), 0)
-    np.savez(out, x=img.transpose(3, 0, 1, 2).astype(np.float16), y=lab, brain=brain)
+    np.savez_compressed(out, x=img.transpose(3, 0, 1, 2).astype(np.float16), y=lab, brain=brain)
     return case
 
 
