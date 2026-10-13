@@ -12,7 +12,9 @@ on graphs, propagated with personalised PageRank.
 - `muse/baselines.py` — GCN/GAT/APPNP with zero-imputation, MMGL-style, TMC, ECD, EGNN, HeMIS
 - `muse/dempster.py` — Dempster, Yager, PCR5, averaging rules (order-dependence study)
 - `run_graph.py` — Cora/CiteSeer/Amazon-Photo: `tune` (validation only) -> `select` -> `final` (10 seeds)
-- `preprocess_brats.py`, `run_brats.py` — MSD Task01 brain tumour MRI as supervoxel graphs
+- `muse3d/`, `run_mri3d.py` — voxel-level MUSE on brain-tumour MRI (per-sequence 3D U-Nets, evidential fusion) vs UNet-MD, HeMIS, LateMean, TMC
+- `colab/MUSE_colab.ipynb` — run everything on a free Colab T4 (resumable via Google Drive; opens result PRs)
+- `preprocess_brats.py`, `run_brats.py` — earlier supervoxel-graph MRI variant (superseded)
 - `analysis_order.py` — empirical order-dependence of fusion rules
 - `tests/` — formal properties (associativity, vacuous identity, monotone uncertainty, no leakage)
 

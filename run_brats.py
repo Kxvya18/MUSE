@@ -24,7 +24,7 @@ from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 
 from muse.metrics import evaluate, outputs_to_prob_unc
-from run_graph import build, MAIN, ABLATIONS
+from run_graph import build, MAIN, ABLATIONS, auto_device
 
 K = 4
 PATTERNS = [p for r in range(1, K + 1) for p in itertools.combinations(range(K), r)]
@@ -94,7 +94,8 @@ def voxel_dice(case_root, case, node_pred):
             "ET": dice(vol == 4, lab == 3)}
 
 
-def train(model_name, cfg, seed, root, epochs=40, B=4, dev="mps", patience=8, log=None):
+def train(model_name, cfg, seed, root, epochs=40, B=4, dev=None, patience=8, log=None):
+    dev = dev or auto_device()
     torch.manual_seed(seed); np.random.seed(seed)
     split, get = load_split(root)
     split_, get_ = load_split(root)
@@ -145,7 +146,8 @@ def validate(model, cases, pats, get, dev):
 
 
 @torch.no_grad()
-def test(model, root, dev="mps"):
+def test(model, root, dev=None):
+    dev = dev or auto_device()
     model.eval()
     split, get = load_split(root)
     res = {}
