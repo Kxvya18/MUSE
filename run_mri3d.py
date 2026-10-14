@@ -113,8 +113,14 @@ def ece(conf, correct, bins=15):
 
 
 def case_metrics(prob, unc, contrib, y, brain, rng):
+    # Dempster-based fusion can overflow on a few voxels; record how many and score the
+    # rest instead of crashing (non-finite probabilities -> uniform, uncertainty -> 1).
+    bad = ~np.isfinite(prob).all(0) | ~np.isfinite(unc)
+    if bad.any():
+        prob = np.where(np.isfinite(prob), prob, 1.0 / prob.shape[0])
+        unc = np.where(np.isfinite(unc), unc, 1.0)
     pred = prob.argmax(0)
-    m = {}
+    m = {"nonfinite_voxels": int(bad.sum())}
     for r, labels in REGIONS.items():
         P, G = np.isin(pred, labels), np.isin(y, labels)
         m[f"dice_{r}"], m[f"hd95_{r}"] = dice(P, G), hd95(P, G)
@@ -123,7 +129,10 @@ def case_metrics(prob, unc, contrib, y, brain, rng):
     idx = tuple(vox.T)
     conf, correct, u = prob.max(0)[idx], (pred[idx] == y[idx]), unc[idx]
     m["ece"] = ece(conf, correct.astype(float))
-    m["auroc_err"] = float(roc_auc_score(~correct, u)) if 0 < correct.sum() < len(correct) else float("nan")
+    try:
+        m["auroc_err"] = float(roc_auc_score(~correct, u)) if 0 < correct.sum() < len(correct) else float("nan")
+    except ValueError:
+        m["auroc_err"] = float("nan")
     # uncertainty at the tumour boundary vs inside the tumour / healthy brain
     wt = y > 0
     edge = wt ^ ndimage.binary_erosion(wt) if wt.any() else wt
