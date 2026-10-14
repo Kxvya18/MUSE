@@ -25,7 +25,7 @@ def job(model, seed, gpu, a):
     env = {**os.environ, "CUDA_VISIBLE_DEVICES": str(gpu)}
     log = open(os.path.join(a.runs, f"log_{model}_s{seed}.txt"), "a")
     base = [sys.executable, "run_mri3d.py"]
-    args = ["--model", model, "--seed", str(seed), "--data", a.data, "--out", a.runs, "--workers", "2"]
+    args = ["--model", model, "--seed", str(seed), "--data", a.data, "--out", a.runs, "--workers", "2"] + a.extra.split()
     cmd = (f"{' '.join(base)} train {' '.join(args)} && {' '.join(base)} test {' '.join(args)} "
            f"&& touch {a.runs}/{model}_s{seed}/test_done")
     return subprocess.Popen(cmd, shell=True, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -59,6 +59,7 @@ def main():
     ap.add_argument("--runs", default="/kaggle/working/runs")
     ap.add_argument("--data", default="/tmp/mri3d")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--extra", default="", help="extra arguments passed to run_mri3d.py train/test")
     a = ap.parse_args()
     os.makedirs(a.runs, exist_ok=True)
     todo = [m for m in QUEUE if not is_done(a.runs, m, a.seed)]

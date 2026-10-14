@@ -22,7 +22,7 @@ import torch
 from scipy import ndimage
 from sklearn.metrics import roc_auc_score
 
-from muse3d.data import PATTERNS, SEQUENCES, TrainSet, load_case, preprocess_all
+from muse3d.data import PATTERNS, SEQUENCES, TrainSet, load_case, load_full_labels, preprocess_all
 from muse3d.losses import loss_for
 from muse3d.models import MODELS, per_sequence_features, probs_and_uncertainty
 
@@ -138,13 +138,22 @@ def case_metrics(prob, unc, contrib, y, brain, rng):
 
 
 # ----------------------------------------------------------------- train / test
-def evaluate_val(model, data_dir, cases, seed):
+def to_full_resolution(prob, unc, contrib, shape):
+    """Trilinear upsampling of low-resolution outputs to the original voxel grid."""
+    if prob.shape[1:] == tuple(shape):
+        return prob, unc, contrib
+    up = lambda a: torch.nn.functional.interpolate(torch.from_numpy(a)[None], size=tuple(shape),
+                                                   mode="trilinear", align_corners=False)[0].numpy()
+    return up(prob), up(unc[None])[0], up(contrib)
+
+
+def evaluate_val(model, data_dir, cases, seed, patch=128, stride=96):
     rng = np.random.default_rng(seed)
     scores = []
     for case in cases:
         p = PATTERNS[rng.integers(len(PATTERNS))]
         x, y, brain = load_case(data_dir, case)
-        prob, _, _ = predict_case(model, x.astype(np.float32), [p])[p]
+        prob, _, _ = predict_case(model, x.astype(np.float32), [p], patch, stride)[p]
         pred = prob.argmax(0)
         scores.append(np.mean([dice(np.isin(pred, l), np.isin(y, l)) for l in REGIONS.values()]))
     return float(np.mean(scores))
@@ -185,7 +194,7 @@ def train(a):
             if it % 50 == 0:
                 print(f"{a.model} s{a.seed} it {it}/{a.iters} loss {loss.item():.4f} ({(time.time()-t0)/60:.1f} min)", flush=True)
             if it % a.val_every == 0 or it == a.iters:
-                v = evaluate_val(model, a.data, split["val"][: a.val_cases], a.seed)
+                v = evaluate_val(model, a.data, split["val"][: a.val_cases], a.seed, a.test_patch, a.test_stride)
                 if v > best:
                     best = v
                     torch.save(model.state_dict(), os.path.join(run, "best.pt"))
@@ -212,12 +221,14 @@ def test(a):
     for i, case in enumerate(split["test"]):
         if case in done:
             continue
-        x, y, brain = load_case(a.data, case)
-        res = predict_case(model, x.astype(np.float32), PATTERNS)
+        x, _, _ = load_case(a.data, case)
+        y, brain = load_full_labels(a.data, case)
+        res = predict_case(model, x.astype(np.float32), PATTERNS, a.test_patch, a.test_stride)
         done[case] = {}
         sl = int(np.argmax((y > 0).sum((0, 1))))  # axial slice with most tumour (for figures)
         keep = {}
         for p, (prob, unc, contrib) in res.items():
+            prob, unc, contrib = to_full_resolution(prob, unc, contrib, y.shape)
             m, pred = case_metrics(prob, unc, contrib, y, brain, rng)
             done[case]["+".join(SEQUENCES[k] for k in p)] = m
             if p in show and i < 8:
@@ -245,9 +256,12 @@ if __name__ == "__main__":
     ap.add_argument("--val_every", type=int, default=1000)
     ap.add_argument("--val_cases", type=int, default=24)
     ap.add_argument("--save_every", type=int, default=250)
+    ap.add_argument("--factor", type=int, default=1, help="prep: downsampling factor (2 = 2 mm voxels)")
+    ap.add_argument("--test_patch", type=int, default=128)
+    ap.add_argument("--test_stride", type=int, default=96)
     a = ap.parse_args()
     if a.stage == "prep":
-        preprocess_all(a.src, a.data, workers=a.workers)
+        preprocess_all(a.src, a.data, workers=a.workers, factor=a.factor)
     elif a.stage == "train":
         train(a)
     else:
