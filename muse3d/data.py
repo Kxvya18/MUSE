@@ -24,7 +24,9 @@ PATTERNS = [p for r in range(1, 5) for p in itertools.combinations(range(4), r)]
 
 
 def preprocess_case(args):
-    src, out_dir = args
+    """Crop + z-score; with factor > 1 the stored training volume is downsampled
+    (images trilinear, labels nearest) and the full-resolution labels are kept for scoring."""
+    src, out_dir, factor = args
     case = os.path.basename(src).replace(".nii.gz", "")
     out = os.path.join(out_dir, case + ".npz")
     if os.path.exists(out):
@@ -39,15 +41,22 @@ def preprocess_case(args):
     for k in range(4):
         v = img[..., k][brain]
         img[..., k] = np.where(brain, (img[..., k] - v.mean()) / (v.std() + 1e-6), 0)
-    np.savez_compressed(out, x=img.transpose(3, 0, 1, 2).astype(np.float16), y=lab, brain=brain)
+    x = img.transpose(3, 0, 1, 2)
+    full = {"y_full": lab, "brain_full": brain}
+    if factor > 1:
+        from scipy.ndimage import zoom
+        x = np.stack([zoom(c, 1 / factor, order=1) for c in x])
+        lab = zoom(lab, 1 / factor, order=0)
+        brain = zoom(brain.astype(np.uint8), 1 / factor, order=0).astype(bool)
+    np.savez_compressed(out, x=x.astype(np.float16), y=lab, brain=brain, **full)
     return case
 
 
-def preprocess_all(src_root, out_dir, workers=2):
+def preprocess_all(src_root, out_dir, workers=2, factor=1):
     os.makedirs(out_dir, exist_ok=True)
     files = sorted(glob.glob(os.path.join(src_root, "imagesTr", "BRATS_*.nii.gz")))
     with Pool(workers) as p:
-        for i, _ in enumerate(p.imap_unordered(preprocess_case, [(f, out_dir) for f in files])):
+        for i, _ in enumerate(p.imap_unordered(preprocess_case, [(f, out_dir, factor) for f in files])):
             if i % 50 == 0:
                 print(f"preprocessed {i}/{len(files)}", flush=True)
     # same patient-level split as the graph experiments (70/10/20, seed 0)
@@ -63,6 +72,12 @@ def preprocess_all(src_root, out_dir, workers=2):
 def load_case(data_dir, case):
     z = np.load(os.path.join(data_dir, case + ".npz"))
     return z["x"], z["y"], z["brain"]
+
+
+def load_full_labels(data_dir, case):
+    """Full-resolution labels and brain mask (equal to the training ones when factor = 1)."""
+    z = np.load(os.path.join(data_dir, case + ".npz"))
+    return z["y_full"], z["brain_full"]
 
 
 def random_crop(x, y, size, rng, p_tumour=0.67):

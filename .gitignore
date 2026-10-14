@@ -12,3 +12,4 @@ install.log
 results/smoke/
 diag*.py
 .gitlock/
+runs_mac/
