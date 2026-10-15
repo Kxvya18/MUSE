@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "ECD", "seed": 0, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.3, "hidden": 64}, "val": 0.6433333357175192, "epochs": 78, "time": 5.0631263256073}

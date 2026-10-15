@@ -13,3 +13,4 @@ results/smoke/
 diag*.py
 .gitlock/
 runs_mac/
+runs_final/*/best.pt
