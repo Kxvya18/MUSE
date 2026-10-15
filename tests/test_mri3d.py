@@ -38,7 +38,7 @@ def test_absent_sequences_are_vacuous_and_ignored():
 
 def test_fuse_matches_forward():
     x, _, mask = _batch()
-    for name in ("MUSE", "HeMIS", "LateMean", "TMC"):
+    for name in ("MUSE", "HeMIS", "LateMean", "TMC", "RFNet", "mmFormer"):
         m = MODELS[name]().eval()
         with torch.no_grad():
             ref = m(x, mask)
@@ -46,3 +46,13 @@ def test_fuse_matches_forward():
             fused = m.fuse(H, mask)
         key = next(k for k in ("alpha", "prob", "logits") if k in ref)
         assert torch.allclose(ref[key], fused[key], atol=1e-5), name
+
+
+def test_new_baselines_ignore_absent_sequences():
+    x, _, mask = _batch()
+    for name in ("RFNet", "mmFormer"):
+        m = MODELS[name]().eval()
+        x2 = x.clone()
+        x2[:, 1] = 1e4  # sequence 1 is absent for every sample
+        with torch.no_grad():
+            assert torch.allclose(m(x, mask)["logits"], m(x2, mask)["logits"], atol=1e-4), name

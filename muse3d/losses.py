@@ -74,7 +74,13 @@ def softmax_loss(out, y, anneal):
                 loss = loss + F.cross_entropy(out["logits_k"][k][idx], y[idx]) / 4
         return loss
     logits = out["logits"].float()
-    return F.cross_entropy(logits, y) + soft_dice(torch.softmax(logits, 1), y)
+    loss = F.cross_entropy(logits, y) + soft_dice(torch.softmax(logits, 1), y)
+    if "aux_logits" in out:  # RFNet-style per-sequence auxiliary heads
+        for k in range(4):
+            idx = out["mask"][:, k].nonzero(as_tuple=True)[0]
+            if idx.numel():
+                loss = loss + F.cross_entropy(out["aux_logits"][k][idx], y[idx]) / 4
+    return loss
 
 
 def loss_for(name):
