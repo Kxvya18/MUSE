@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "EGNN", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 128}, "val": 0.125, "epochs": 65, "time": 4.086194038391113}

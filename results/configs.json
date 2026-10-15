@@ -1,0 +1,275 @@
+{
+ "CiteSeer|APPNP-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.7066666682561239
+ },
+ "CiteSeer|ECD": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.6683333317438762
+ },
+ "CiteSeer|EGNN": {
+  "cfg": {
+   "dropout": 0.3,
+   "hidden": 128,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.6523333390553792
+ },
+ "CiteSeer|GAT-zero": {
+  "cfg": {
+   "dropout": 0.3,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.685666670401891
+ },
+ "CiteSeer|GCN-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.6913333237171173
+ },
+ "CiteSeer|HeMIS": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.6480000019073486
+ },
+ "CiteSeer|MMGL-style": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.6676666736602783
+ },
+ "CiteSeer|MUSE": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "prop_steps": 10,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.6983333230018616
+ },
+ "CiteSeer|TMC": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.664333333571752
+ },
+ "Cora|APPNP-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.8050000071525574
+ },
+ "Cora|ECD": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.7843333184719086
+ },
+ "Cora|EGNN": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.7726666629314423
+ },
+ "Cora|GAT-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.7933333317438762
+ },
+ "Cora|GCN-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "wd": 0.005
+  },
+  "n": 2,
+  "val": 0.7879999975363414
+ },
+ "Cora|HeMIS": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.7883333365122478
+ },
+ "Cora|MMGL-style": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.7549999952316284
+ },
+ "Cora|MUSE": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.005,
+   "prop_steps": 10,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.804666668176651
+ },
+ "Cora|TMC": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 2,
+  "val": 0.7853333353996277
+ },
+ "Photo|APPNP-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.8916666507720947
+ },
+ "Photo|ECD": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.8402777711550394
+ },
+ "Photo|EGNN": {
+  "cfg": {
+   "dropout": 0.3,
+   "hidden": 128,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.125
+ },
+ "Photo|GAT-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.9027777711550394
+ },
+ "Photo|GCN-zero": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.9027777512868246
+ },
+ "Photo|HeMIS": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.875
+ },
+ "Photo|MMGL-style": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 64,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.8513889114061991
+ },
+ "Photo|MUSE": {
+  "cfg": {
+   "dropout": 0.3,
+   "hidden": 64,
+   "lr": 0.01,
+   "prop_steps": 0,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.9055555462837219
+ },
+ "Photo|TMC": {
+  "cfg": {
+   "dropout": 0.6,
+   "hidden": 128,
+   "lr": 0.01,
+   "wd": 0.0005
+  },
+  "n": 1,
+  "val": 0.862500011920929
+ }
+}

@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "ECD", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.6, "hidden": 64}, "val": 0.8402777711550394, "epochs": 180, "time": 23.88626742362976}

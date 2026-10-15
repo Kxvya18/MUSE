@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "TMC", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.6, "hidden": 128}, "val": 0.862500011920929, "epochs": 295, "time": 69.8352324962616}

@@ -230,6 +230,9 @@ def test(a):
     for i, case in enumerate(split["test"]):
         if case in done:
             continue
+        if not os.path.exists(os.path.join(a.data, case + ".npz")):
+            print(f"test {a.model}: {case} not preprocessed, skipped", flush=True)
+            continue
         x, _, _ = load_case(a.data, case)
         y, brain = load_full_labels(a.data, case)
         res = predict_case(model, x.astype(np.float32), PATTERNS, a.test_patch, a.test_stride)

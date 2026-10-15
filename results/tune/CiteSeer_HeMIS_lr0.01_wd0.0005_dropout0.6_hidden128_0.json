@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "HeMIS", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.6, "hidden": 128}, "val": 0.640666663646698, "epochs": 164, "time": 11.906559944152832}

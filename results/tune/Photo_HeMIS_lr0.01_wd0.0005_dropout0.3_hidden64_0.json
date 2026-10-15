@@ -1,0 +1,1 @@
+{"dataset": "Photo", "model": "HeMIS", "seed": 0, "cfg": {"lr": 0.01, "wd": 0.0005, "dropout": 0.3, "hidden": 64}, "val": 0.13055555522441864, "epochs": 70, "time": 8.44618535041809}
