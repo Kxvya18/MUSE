@@ -154,12 +154,79 @@ class TMC3D(nn.Module):
         return {"alpha": to_dirichlet(b, u).movedim(-1, 1), "alphas": alphas, "mask": mask}
 
 
+class RFNet3D(nn.Module):
+    """RFNet-style region-aware fusion (Ding et al., ICCV 2021), basic version on our backbone:
+    for each tumour region r, voxel-wise softmax weights over the *present* sequences
+    combine their features; the region features are concatenated for the output head.
+    Per-sequence auxiliary heads are trained as in RFNet."""
+
+    def __init__(self, C=4, base=16, regions=3):
+        super().__init__()
+        self.F, self.R = base, regions
+        self.encoders = nn.ModuleList([UNet3D(1, base) for _ in range(4)])
+        self.score = nn.ModuleList([nn.Conv3d(base, regions, 1) for _ in range(4)])
+        self.head = nn.Sequential(block(regions * base, base), nn.Conv3d(base, C, 1))
+        self.aux = nn.ModuleList([nn.Conv3d(base, C, 1) for _ in range(4)])
+
+    def forward(self, x, mask):
+        return self.fuse(per_sequence_features(self.encoders, x, mask, self.F), mask)
+
+    def fuse(self, H, mask):
+        m = mask.t()[:, :, None, None, None, None]  # K, B, 1, 1, 1, 1
+        s = torch.stack([self.score[k](H[k]).float() for k in range(4)])  # K, B, R, ...
+        w = torch.softmax(s.masked_fill(~m, -1e4), 0)  # weights over present sequences only
+        fused = torch.cat([(w[:, :, r:r + 1] * H.float()).sum(0) for r in range(self.R)], 1)
+        aux = torch.stack([self.aux[k](H[k]).float() for k in range(4)])
+        return {"logits": self.head(fused.to(H.dtype)), "aux_logits": aux, "mask": mask}
+
+
+class MMFormer3D(nn.Module):
+    """mmFormer-style fusion (Zhang et al., MICCAI 2022), basic version on our backbone:
+    per-sequence features are pooled to a coarse grid, a small Transformer attends across
+    sequences and space with absent sequences masked out, and the result (averaged over
+    present sequences, upsampled) is added to the mean full-resolution feature."""
+
+    def __init__(self, C=4, base=16, d=64, pool=16, layers=2, heads=4):
+        super().__init__()
+        self.F, self.pool = base, pool
+        self.encoders = nn.ModuleList([UNet3D(1, base) for _ in range(4)])
+        self.inp, self.out = nn.Linear(base, d), nn.Linear(d, base)
+        self.seq_embed = nn.Parameter(torch.zeros(4, d))
+        layer = nn.TransformerEncoderLayer(d, heads, 2 * d, dropout=0.0, batch_first=True)
+        self.tf = nn.TransformerEncoder(layer, layers)
+        self.head = nn.Sequential(block(base, base), nn.Conv3d(base, C, 1))
+
+    def forward(self, x, mask):
+        return self.fuse(per_sequence_features(self.encoders, x, mask, self.F), mask)
+
+    def fuse(self, H, mask):
+        K, B, F_ = H.shape[:3]
+        size = H.shape[3:]
+        m = mask.t().float()[:, :, None, None, None, None]
+        coarse = torch.stack([F.avg_pool3d(H[k].float(), self.pool) for k in range(K)])  # K,B,F,d,h,w
+        g = coarse.shape[3:]
+        n = g[0] * g[1] * g[2]
+        tok = coarse.flatten(3).permute(1, 0, 3, 2)  # B, K, n, F
+        tok = self.inp(tok) + self.seq_embed[None, :, None, :]
+        tok = tok.reshape(B, K * n, -1)
+        pad = (~mask).repeat_interleave(n, dim=1)  # True = ignore (absent sequence)
+        tok = self.tf(tok, src_key_padding_mask=pad).reshape(B, K, n, -1)
+        keep = mask.float()[:, :, None, None]
+        tok = (tok * keep).sum(1) / keep.sum(1).clamp_min(1)  # mean over present sequences
+        ctx = self.out(tok).permute(0, 2, 1).reshape(B, F_, *g)
+        ctx = F.interpolate(ctx, size=size, mode="trilinear", align_corners=False)
+        local = ((H.float() * m).sum(0) / m.sum(0).clamp_min(1))
+        return {"logits": self.head((local + ctx).to(H.dtype)), "mask": mask}
+
+
 MODELS = {
     "MUSE": lambda: MUSE3D(),
     "UNet-MD": lambda: UNetMD(),
     "HeMIS": lambda: HeMIS3D(),
     "LateMean": lambda: LateMean3D(),
     "TMC": lambda: TMC3D(),
+    "RFNet": lambda: RFNet3D(),
+    "mmFormer": lambda: MMFormer3D(),
     "MUSE-noGate": lambda: MUSE3D(use_gate=False),
     "MUSE-Dempster": lambda: MUSE3D(combiner="dempster"),
 }
