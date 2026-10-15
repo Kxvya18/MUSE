@@ -83,10 +83,12 @@ class ECD(nn.Module):
         super().__init__()
         self.encs = nn.ModuleList([GATv2Encoder(d, hidden, heads, dropout) for d in in_dims])
         self.heads = nn.ModuleList([EvidentialHead(hidden, C) for _ in in_dims])
+        # same per-modality LayerNorm as MUSE: without it ECD stays at chance on Amazon-Photo
+        self.norms = nn.ModuleList([nn.LayerNorm(hidden) for _ in in_dims])
         self.beta = nn.Parameter(torch.full((len(in_dims), C), 2.0))
 
     def forward(self, xs, ei, mask):
-        alphas = torch.stack([h(e(x, ei)) for e, h, x in zip(self.encs, self.heads, zero_fill(xs, mask))])
+        alphas = torch.stack([h(n(e(x, ei))) for e, h, n, x in zip(self.encs, self.heads, self.norms, zero_fill(xs, mask))])
         beta = torch.sigmoid(self.beta).unsqueeze(1)  # K,1,C
         disc = (alphas - 1) * beta + 1  # discounting moves belief to ignorance
         b, u = chain(disc, list(range(disc.size(0))), "dempster")

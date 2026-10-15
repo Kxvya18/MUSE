@@ -176,7 +176,11 @@ if __name__ == "__main__":
                         if os.path.exists(f):
                             continue
                         t = time.time()
-                        r = run(ds, mn, s, c)
+                        try:
+                            r = run(ds, mn, s, c)
+                        except Exception as e:  # one broken model must not stop the others
+                            print(f"[tune] {ds} {mn} {cfg_key(c)} s{s} FAILED: {e!r}", flush=True)
+                            continue
                         r["time"] = time.time() - t
                         json.dump(r, open(f, "w"))
                         print(f"[tune] {ds:8s} {mn:12s} {cfg_key(c)} s{s} val={r['val']:.4f} ({r['time']:.0f}s)", flush=True)
@@ -209,7 +213,11 @@ if __name__ == "__main__":
                     if os.path.exists(f):
                         continue
                     t = time.time()
-                    r = run(ds, mn, s, c, test=True)
+                    try:
+                        r = run(ds, mn, s, c, test=True)
+                    except Exception as e:
+                        print(f"[final] {ds} {mn} s{s} FAILED: {e!r}", flush=True)
+                        continue
                     r["time"] = time.time() - t
                     json.dump(r, open(f, "w"), indent=1)
                     print(f"[final] {ds:8s} {mn:16s} s{s} acc@0={r['rates']['0.0']['acc']:.4f} "

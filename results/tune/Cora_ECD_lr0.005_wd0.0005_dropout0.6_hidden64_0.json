@@ -1,1 +1,0 @@
-{"dataset": "Cora", "model": "ECD", "seed": 0, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.6, "hidden": 64}, "val": 0.4400000075499217, "epochs": 158, "time": 57.94181299209595}
