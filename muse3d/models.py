@@ -92,6 +92,117 @@ class MUSE3D(nn.Module):
         return {"alpha": alpha, "alphas": alphas, "gammas": gammas, "mask": mask}
 
 
+class SeqUNet(nn.Module):
+    """3D U-Net split into encode / decode so a cross-sequence context can be injected at the
+    bottleneck. decode() returns decoder features at 1/4, 1/2 and full resolution."""
+
+    def __init__(self, base=16):
+        super().__init__()
+        c = [base, base * 2, base * 4, base * 8]
+        self.c = c
+        self.enc = nn.ModuleList([block(1, c[0]), block(c[0], c[1]), block(c[1], c[2]), block(c[2], c[3])])
+        self.down = nn.ModuleList([nn.Conv3d(c[i], c[i], 2, stride=2) for i in range(3)])
+        self.mix = nn.Conv3d(2 * c[3], c[3], 1)  # own bottleneck + shared context -> bottleneck
+        self.up = nn.ModuleList([nn.ConvTranspose3d(c[i + 1], c[i], 2, stride=2) for i in range(3)])
+        self.dec = nn.ModuleList([block(2 * c[i], c[i]) for i in range(3)])
+
+    def encode(self, x):
+        skips = []
+        for i in range(3):
+            x = self.enc[i](x)
+            skips.append(x)
+            x = self.down[i](x)
+        return skips, self.enc[3](x)
+
+    def decode(self, skips, z, ctx):
+        x = self.mix(torch.cat([z, ctx], 1))
+        outs = []
+        for i in reversed(range(3)):
+            x = self.dec[i](torch.cat([self.up[i](x), skips[i]], 1))
+            outs.append(x)
+        return outs  # [1/4, 1/2, full]
+
+
+class MUSE3Dv2(nn.Module):
+    """MUSE with cross-sequence context: the bottlenecks of the *present* sequences are averaged
+    into a shared context that every present sequence's decoder sees, so each source's evidence
+    is informed by the others before evidential fusion. Absent sequences are still never
+    encoded, are excluded from the context, and contribute vacuous mass (alpha = 1); the
+    gate and the sum combiner are unchanged, so the three fusion properties still hold.
+    With deep_sup=True the fused evidence is also produced at 1/2 and 1/4 resolution for
+    deep supervision (training only; the output is the full-resolution evidence)."""
+
+    def __init__(self, C=4, base=16, deep_sup=False):
+        super().__init__()
+        self.C, self.F, self.deep_sup = C, base, deep_sup
+        self.nets = nn.ModuleList([SeqUNet(base) for _ in range(4)])
+        self.heads = nn.ModuleList([nn.Conv3d(base, C, 1) for _ in range(4)])
+        self.gates = nn.ModuleList([nn.Conv3d(2 * base, C, 1) for _ in range(4)])
+        ch = self.nets[0].c
+        self.ds_heads = nn.ModuleList([nn.ModuleList([nn.Conv3d(ch[2], C, 1), nn.Conv3d(ch[1], C, 1)]) for _ in range(4)])
+
+    def encode_all(self, x, mask):
+        """Encoder outputs per sequence (only for samples that acquired it)."""
+        enc = []
+        for k, net in enumerate(self.nets):
+            idx = mask[:, k].nonzero(as_tuple=True)[0]
+            enc.append((idx, net.encode(x[idx, k:k + 1])) if idx.numel() else (idx, None))
+        return enc
+
+    def decode_fuse(self, enc, mask):
+        B = mask.size(0)
+        # shared context: mean bottleneck over the sequences present for each sample
+        zs = [e[1][1] for e in enc if e[1] is not None]
+        z0 = zs[0]
+        ctx_sum = z0.new_zeros((B,) + z0.shape[1:])
+        for k, (idx, e) in enumerate(enc):
+            if e is not None:
+                keep = mask[idx, k]
+                ctx_sum[idx[keep]] += e[1][keep]
+        ctx = ctx_sum / mask.sum(1).clamp_min(1).view(B, 1, 1, 1, 1).to(ctx_sum.dtype)
+        feats = [[None] * 3 for _ in range(4)]
+        shapes = None
+        for k, (idx, e) in enumerate(enc):
+            if e is None:
+                continue
+            keep = mask[idx, k]
+            if not keep.any():
+                continue
+            rows = idx[keep]
+            skips = [s[keep] for s in e[0]]
+            outs = self.nets[k].decode(skips, e[1][keep], ctx[rows])
+            feats[k] = (rows, outs)
+            shapes = [o.shape for o in outs]
+        m = mask.t().float()[:, :, None, None, None, None]
+        def gather(level, width):  # stack per-sequence features at one decoder level -> K,B,width,...
+            shape = shapes[level][2:]
+            H = ctx.new_zeros((4, B, width) + tuple(shape))
+            for k in range(4):
+                if feats[k][0] is not None:
+                    rows, outs = feats[k]
+                    H[k, rows] = outs[level].to(H.dtype)
+            return H
+        H = gather(2, self.F)
+        alphas = torch.stack([F.softplus(self.heads[k](H[k]).float()) + 1 for k in range(4)])
+        alphas = torch.where(m.bool(), alphas, torch.ones_like(alphas))
+        hctx = (H * m).sum(0) / m.sum(0).clamp_min(1)
+        gammas = torch.stack([torch.sigmoid(self.gates[k](torch.cat([H[k], hctx], 1)).float()) for k in range(4)]) * m
+        out = {"alpha": ((alphas - 1) * gammas).sum(0) + 1, "alphas": alphas, "gammas": gammas, "mask": mask}
+        if self.deep_sup and self.training:
+            ch = self.nets[0].c
+            ds = []
+            for j, (level, width) in enumerate([(0, ch[2]), (1, ch[1])]):
+                Hs = gather(level, width)
+                a = torch.stack([F.softplus(self.ds_heads[k][j](Hs[k]).float()) + 1 for k in range(4)])
+                a = torch.where(m.bool(), a, torch.ones_like(a))
+                ds.append(((a - 1).sum(0) + 1))
+            out["alpha_ds"] = ds  # [1/4 resolution, 1/2 resolution]
+        return out
+
+    def forward(self, x, mask):
+        return self.decode_fuse(self.encode_all(x, mask), mask)
+
+
 class UNetMD(nn.Module):
     def __init__(self, C=4, base=32):
         super().__init__()
@@ -225,6 +336,8 @@ MODELS = {
     "HeMIS": lambda: HeMIS3D(),
     "LateMean": lambda: LateMean3D(),
     "TMC": lambda: TMC3D(),
+    "MUSE2-ctx": lambda: MUSE3Dv2(),
+    "MUSE2-ctx-ds": lambda: MUSE3Dv2(deep_sup=True),
     "RFNet": lambda: RFNet3D(),
     "mmFormer": lambda: MMFormer3D(),
     "MUSE-noGate": lambda: MUSE3D(use_gate=False),

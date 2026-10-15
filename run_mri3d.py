@@ -58,14 +58,19 @@ def predict_case(model, x, patterns, patch=128, stride=96):
         sl = (slice(a, a + patch), slice(b, b + patch), slice(c, c + patch))
         xt = torch.from_numpy(xp[(slice(None),) + sl].astype(np.float32))[None].to(DEV)
         with torch.autocast(DEV, enabled=DEV == "cuda"):
-            H = None
-            if hasattr(model, "fuse"):
+            H, E = None, None
+            if hasattr(model, "encode_all"):  # MUSE2: encoders once, decoders per pattern
+                E = model.encode_all(xt, torch.ones(1, 4, dtype=torch.bool, device=DEV))
+            elif hasattr(model, "fuse"):
                 full = torch.ones(1, 4, dtype=torch.bool, device=DEV)
                 H = per_sequence_features(model.encoders, xt, full, model.F)
             for p in patterns:
                 mask = torch.zeros(1, 4, dtype=torch.bool, device=DEV)
                 mask[0, list(p)] = True
-                out = model.fuse(H, mask) if H is not None else model(xt, mask)
+                if E is not None:
+                    out = model.decode_fuse(E, mask)
+                else:
+                    out = model.fuse(H, mask) if H is not None else model(xt, mask)
                 prob, unc = probs_and_uncertainty(out)
                 acc[p][0][(slice(None),) + sl] += prob[0].float().cpu().numpy()
                 acc[p][1][sl] += unc[0].float().cpu().numpy()
