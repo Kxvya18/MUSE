@@ -13,7 +13,7 @@ import os
 import numpy as np
 from scipy.stats import wilcoxon
 
-ORDER = ["MUSE", "UNet-MD", "HeMIS", "LateMean", "TMC", "MUSE-noGate", "MUSE-Dempster"]
+ORDER = ["MUSE", "UNet-MD", "HeMIS", "LateMean", "TMC", "RFNet", "mmFormer", "MUSE-noGate", "MUSE-Dempster"]
 REG = ["WT", "TC", "ET"]
 
 
@@ -30,8 +30,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="runs_final")
     ap.add_argument("--out", default="results/mri3d_tables")
+    ap.add_argument("--exclude", default="", help="comma-separated models to leave out (e.g. still running)")
     a = ap.parse_args()
-    R = load(a.runs)
+    R = {m: v for m, v in load(a.runs).items() if m not in a.exclude.split(",")}
     common = sorted(set.intersection(*[set(v) for v in R.values()]))
     pats = list(next(iter(R.values()))[common[0]].keys())
     pats.sort(key=lambda p: (-p.count("+"), p))
