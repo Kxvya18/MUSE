@@ -182,7 +182,7 @@ def train(a):
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-5)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=a.lr, total_steps=a.iters, pct_start=0.05)
     scaler = torch.amp.GradScaler(enabled=DEV == "cuda")
-    it, best = 0, -1.0
+    it, best, skipped, streak = 0, -1.0, 0, 0
     last = os.path.join(run, "last.pt")
     if os.path.exists(last):  # resume
         ck = torch.load(last, map_location=DEV)
@@ -201,6 +201,16 @@ def train(a):
                 out = model(x, mask)
             loss = loss_fn(out, y, anneal=min(1.0, it / (0.2 * a.iters)))
             opt.zero_grad(set_to_none=True)
+            if not torch.isfinite(loss):  # fp16 overflow: skip the batch instead of poisoning the optimiser
+                skipped, streak = skipped + 1, streak + 1
+                if streak >= 200:
+                    raise RuntimeError(f"{a.model}: 200 consecutive non-finite losses at iteration {it}")
+                if skipped % 10 == 1:
+                    print(f"{a.model} s{a.seed} it {it}: non-finite loss, batch skipped ({skipped} so far)", flush=True)
+                it += 1
+                sched.step()
+                continue
+            streak = 0
             scaler.scale(loss).backward()
             scaler.unscale_(opt); torch.nn.utils.clip_grad_norm_(model.parameters(), 12)
             scaler.step(opt); scaler.update(); sched.step()
