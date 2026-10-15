@@ -1,0 +1,1 @@
+{"dataset": "Cora", "model": "EGNN", "seed": 1, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.6, "hidden": 128}, "val": 0.7726666728655497, "epochs": 90, "time": 2.6579785346984863}
