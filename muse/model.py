@@ -287,15 +287,15 @@ def muse_loss(out, y, idx, lambda1: float = 0.1, lambda2: float = 0.05, anneal: 
     alpha_t = yo + (1 - yo) * alpha
     l_kl = kl_dirichlet_uniform(alpha_t).mean()
     # Var_{k in O_i}[gamma_i^(k)], averaged over classes and nodes with |O_i| >= 2.
-    g, m = out["gammas"][:, idx], out["mask"][idx].t().unsqueeze(-1).float()
-    n = m.sum(0)
-    valid = (n.squeeze(-1) >= 2)
-    if lambda2 != 0 and valid.any():
-        mu = (g * m).sum(0) / n.clamp_min(1)
-        var = (((g - mu) ** 2) * m).sum(0) / n.clamp_min(1)
-        l_var = var_sign * var[valid].mean()
-    else:
-        l_var = alpha.new_zeros(())
+    l_var = alpha.new_zeros(())
+    if lambda2 != 0 and "gammas" in out:  # models without a reliability gate (e.g. EGNN) skip it
+        g, m = out["gammas"][:, idx], out["mask"][idx].t().unsqueeze(-1).float()
+        n = m.sum(0)
+        valid = (n.squeeze(-1) >= 2)
+        if valid.any():
+            mu = (g * m).sum(0) / n.clamp_min(1)
+            var = (((g - mu) ** 2) * m).sum(0) / n.clamp_min(1)
+            l_var = var_sign * var[valid].mean()
     loss = l_ce + anneal * lambda1 * l_kl + lambda2 * l_var
     if aux > 0:
         # per-modality evidential terms on the (undiscounted) source evidence, only
