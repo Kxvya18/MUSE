@@ -29,6 +29,11 @@ def evidential_terms(alpha, y, anneal, lam_kl=0.1):
 def muse_loss(out, y, anneal, aux=1.0, lam_var=0.05):
     alpha = out["alpha"]
     loss = evidential_terms(alpha, y, anneal) + soft_dice(alpha / alpha.sum(1, keepdim=True), y)
+    # deep supervision (MUSE2-ctx-ds): fused evidence at 1/4 and 1/2 resolution
+    for a_s, w in zip(out.get("alpha_ds", []), (0.25, 0.5)):
+        step = y.shape[-1] // a_s.shape[-1]
+        y_s = y[:, ::step, ::step, ::step]
+        loss = loss + w * (evidential_terms(a_s, y_s, anneal) + soft_dice(a_s / a_s.sum(1, keepdim=True), y_s))
     # per-sequence evidence must be valid on its own (only where the sequence was acquired)
     mask = out["mask"]
     for k in range(4):

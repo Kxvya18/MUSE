@@ -56,3 +56,24 @@ def test_new_baselines_ignore_absent_sequences():
         x2[:, 1] = 1e4  # sequence 1 is absent for every sample
         with torch.no_grad():
             assert torch.allclose(m(x, mask)["logits"], m(x2, mask)["logits"], atol=1e-4), name
+
+
+def test_muse2_vacuous_and_pattern_reuse():
+    x, y, mask = _batch()
+    for name in ("MUSE2-ctx", "MUSE2-ctx-ds"):
+        m = MODELS[name]().eval()
+        x2 = x.clone()
+        x2[:, 1] = 1e4  # absent for every sample
+        x2[1, 2:] = -1e4  # absent for sample 1
+        with torch.no_grad():
+            ref = m(x, mask)
+            assert torch.allclose(ref["alpha"], m(x2, mask)["alpha"], atol=1e-4), name
+            assert (ref["alphas"][1] == 1).all() and (ref["gammas"][1] == 0).all()
+            enc = m.encode_all(x, torch.ones_like(mask))  # encode once, decode per pattern
+            assert torch.allclose(m.decode_fuse(enc, mask)["alpha"], ref["alpha"], atol=1e-4), name
+        m.train()
+        out = m(x, mask)
+        loss = loss_for(name)(out, y, anneal=0.5)
+        loss.backward()
+        assert torch.isfinite(loss)
+        assert ("alpha_ds" in out) == name.endswith("-ds")
