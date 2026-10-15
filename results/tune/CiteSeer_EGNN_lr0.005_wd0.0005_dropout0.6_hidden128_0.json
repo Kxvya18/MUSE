@@ -1,0 +1,1 @@
+{"dataset": "CiteSeer", "model": "EGNN", "seed": 0, "cfg": {"lr": 0.005, "wd": 0.0005, "dropout": 0.6, "hidden": 128}, "val": 0.6600000063578287, "epochs": 75, "time": 2.688183546066284}
