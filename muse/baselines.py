@@ -99,9 +99,10 @@ class EGNN(nn.Module):
     def __init__(self, in_dims, C, hidden=64, heads=4, dropout=0.6, **_):
         super().__init__()
         self.enc, self.head = GATv2Encoder(sum(in_dims), hidden, heads, dropout), EvidentialHead(hidden, C)
+        self.norm = nn.LayerNorm(hidden)  # same normalisation as MUSE/ECD; without it EGNN collapses on Photo
 
     def forward(self, xs, ei, mask):
-        return {"alpha": self.head(self.enc(torch.cat(zero_fill(xs, mask), -1), ei))}
+        return {"alpha": self.head(self.norm(self.enc(torch.cat(zero_fill(xs, mask), -1), ei)))}
 
 
 # ------------------------------------------------------------------ losses
