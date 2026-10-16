@@ -185,7 +185,7 @@ def render3d(case, y, pm):
 def quantitative():
     R_ = {}
     for m in ["MUSE", "UNet-MD", "HeMIS", "LateMean", "TMC"]:
-        f = f"{RUNS}/{m}_s0/test.json"
+        f = f"results/mri3d_runs/{m}_s0/test.json"  # tracked copy of every model's test results
         if os.path.exists(f):
             R_[m] = json.load(open(f))
     common = sorted(set.intersection(*[set(v) for v in R_.values()]))
