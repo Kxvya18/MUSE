@@ -13,7 +13,8 @@ import os
 import numpy as np
 from scipy.stats import wilcoxon
 
-ORDER = ["MUSE", "UNet-MD", "HeMIS", "LateMean", "TMC", "RFNet", "mmFormer", "MUSE-noGate", "MUSE-Dempster"]
+ORDER = ["MUSE", "UNet-MD", "HeMIS", "LateMean", "TMC", "RFNet", "mmFormer", "MUSE-noGate", "MUSE-Dempster", "MUSE2-ctx-ds"]
+VARIANT = lambda m: m.startswith("MUSE-") or m.startswith("MUSE2")  # ablations / variants: not ranked as baselines
 REG = ["WT", "TC", "ET"]
 
 
@@ -65,7 +66,7 @@ def main():
         summary[m] = row
     for k, better in [("dice_WT", max), ("dice_TC", max), ("dice_ET", max), ("dice_mean", max), ("hd95_WT", min),
                       ("hd95_TC", min), ("hd95_ET", min), ("ece", min), ("auroc", max)]:
-        best[k] = better([m for m in models if not m.startswith("MUSE-")], key=lambda m: summary[m][k])
+        best[k] = better([m for m in models if not VARIANT(m)], key=lambda m: summary[m][k])
     fmt = lambda m, k, v: f"**{v}**" if best.get(k) == m else v
     for m in models:
         s = summary[m]
@@ -84,10 +85,10 @@ def main():
     for j, p in enumerate(pats):
         vals = [np.mean([per_patient(m, f"dice_{r}")[:, j].mean() for r in REG]) for m in models]
         per_pat[p] = dict(zip(models, vals))
-        main_idx = [i for i, m in enumerate(models) if not m.startswith("MUSE-")]
+        main_idx = [i for i, m in enumerate(models) if not VARIANT(m)]
         b = max(main_idx, key=lambda i: vals[i])
         md.append(f"| {p} | " + " | ".join((f"**{v:.3f}**" if i == b else f"{v:.3f}") for i, v in enumerate(vals)) + " |")
-    wins = sum(max([m for m in models if not m.startswith("MUSE-")], key=lambda m: per_pat[p][m]) == "MUSE" for p in pats)
+    wins = sum(max([m for m in models if not VARIANT(m)], key=lambda m: per_pat[p][m]) == "MUSE" for p in pats)
     md.append(f"\nMUSE is best in {wins} of {len(pats)} sequence patterns.\n")
     if "MUSE" in R and any("contrib" in R["MUSE"][common[0]][p] for p in pats):
         md.append("## MUSE per-sequence contribution on tumour voxels (all four sequences available)\n")
