@@ -14,3 +14,7 @@ diag*.py
 .gitlock/
 runs_mac/
 runs_final/*/best.pt
+presentation/node_modules/
+presentation/package*.json
+runs_final/
+figures/*/cache/
