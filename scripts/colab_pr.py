@@ -3,6 +3,7 @@
 usage (inside the cloned repo, GH_TOKEN in the environment):
     python scripts/colab_pr.py <branch> "<title>" "<body>" <path> [<path> ...]
 """
+import base64
 import json
 import os
 import subprocess
@@ -35,7 +36,9 @@ def main():
         return
     files = sh("git", "diff", "--cached", "--name-only").splitlines()
     sh("git", "commit", "-q", "-m", title, "-m", "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>")
-    sh("git", "push", "-q", "-f", "origin", branch)
+    # token passed per command (never written to .git/config, which ends up in saved notebook outputs)
+    auth = base64.b64encode(f"x-access-token:{os.environ['GH_TOKEN']}".encode()).decode()
+    sh("git", "-c", f"http.extraheader=Authorization: Basic {auth}", "push", "-q", "-f", "origin", branch)
     pr = api("POST", "/pulls", {"title": title, "head": branch, "base": "main",
                                 "body": body + "\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"})
     api("POST", f"/pulls/{pr['number']}/reviews", {"event": "COMMENT", "body":
