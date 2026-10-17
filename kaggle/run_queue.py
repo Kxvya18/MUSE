@@ -4,7 +4,9 @@ Each finished model is pushed to GitHub straight away (results PR), so a session
 hits Kaggle's 12-hour limit loses at most the models still running; those resume from
 their last checkpoint in the next session.
 
-usage: python kaggle/run_queue.py --runs /kaggle/working/runs --data /tmp/mri3d
+usage: python kaggle/run_queue.py --runs /kaggle/working/runs --data /tmp/mri3d --seeds 1,2
+
+Without a GH_TOKEN nothing is pushed; results stay in the notebook output (download them from there).
 """
 import argparse
 import os
@@ -33,6 +35,8 @@ def job(model, seed, gpu, a):
 
 def push(a, model):
     """Copy small result files into the repo and open/merge a results PR."""
+    if not os.environ.get("GH_TOKEN"):
+        return
     subprocess.run(f"mkdir -p results/mri3d && rsync -a --include='*/' --include='test.json' "
                    f"--include='train.json' --include='slices/*.npz' --exclude='*' {a.runs}/ results/mri3d/",
                    shell=True, check=False)
@@ -44,6 +48,8 @@ def push(a, model):
 
 def push_failure(a, model, seed):
     """Put the end of a failed model's log on GitHub so the error can be read without Kaggle access."""
+    if not os.environ.get("GH_TOKEN"):
+        return
     os.makedirs("results/mri3d/failures", exist_ok=True)
     log = os.path.join(a.runs, f"log_{model}_s{seed}.txt")
     tail = open(log).read().splitlines()[-80:] if os.path.exists(log) else ["(no log found)"]
@@ -58,11 +64,11 @@ def report_progress(a, running, todo, finished):
     """Print each running model's latest log line and publish a progress file on the
     `kaggle-progress` branch (status only, never merged), so progress is visible from GitHub."""
     lines = [f"# MRI run progress ({time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())})", ""]
-    for gpu, (m, _) in running.items():
-        log = os.path.join(a.runs, f"log_{m}_s{a.seed}.txt")
+    for gpu, (m, seed, _) in running.items():
+        log = os.path.join(a.runs, f"log_{m}_s{seed}.txt")
         last = [l for l in open(log).read().splitlines() if " it " in l or "val" in l or "test" in l][-1:] if os.path.exists(log) else []
-        lines.append(f"- GPU {gpu}: **{m}** — {last[0].strip() if last else 'starting'}")
-    lines += [f"- finished: {', '.join(finished) or '—'}", f"- waiting: {', '.join(todo) or '—'}"]
+        lines.append(f"- GPU {gpu}: **{m} s{seed}** — {last[0].strip() if last else 'starting'}")
+    lines += [f"- finished: {', '.join(finished) or '—'}", f"- waiting: {', '.join(f'{m}_s{s}' for m, s in todo) or '—'}"]
     text = "\n".join(lines) + "\n"
     print(text, flush=True)
     if os.environ.get("GH_TOKEN"):
@@ -101,13 +107,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="/kaggle/working/runs")
     ap.add_argument("--data", default="/tmp/mri3d")
-    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--seeds", default="0", help="comma-separated seeds; every model runs once per seed")
     ap.add_argument("--extra", default="", help="extra arguments passed to run_mri3d.py train/test")
     ap.add_argument("--models", default=",".join(QUEUE), help="comma-separated subset of the queue to run")
     ap.add_argument("--progress_every", type=int, default=300, help="seconds between progress reports")
     a = ap.parse_args()
     os.makedirs(a.runs, exist_ok=True)
-    todo = [m for m in a.models.split(",") if not is_done(a.runs, m, a.seed)]
+    seeds = [int(s) for s in a.seeds.split(",")]
+    todo = [(m, s) for s in seeds for m in a.models.split(",") if not is_done(a.runs, m, s)]
     finished, last_report = [], 0.0
     gpus = list(range(max(1, torch.cuda.device_count())))
     running = {}
@@ -115,19 +122,19 @@ def main():
     while todo or running:
         for gpu in gpus:
             if gpu not in running and todo:
-                m = todo.pop(0)
-                running[gpu] = (m, job(m, a.seed, gpu, a))
-                print(f"[{time.strftime('%H:%M')}] GPU {gpu}: start {m}", flush=True)
+                m, s = todo.pop(0)
+                running[gpu] = (m, s, job(m, s, gpu, a))
+                print(f"[{time.strftime('%H:%M')}] GPU {gpu}: start {m} s{s}", flush=True)
         time.sleep(30)
-        for gpu, (m, p) in list(running.items()):
+        for gpu, (m, s, p) in list(running.items()):
             if p.poll() is not None:
-                print(f"[{time.strftime('%H:%M')}] GPU {gpu}: {m} finished (exit {p.returncode})", flush=True)
+                print(f"[{time.strftime('%H:%M')}] GPU {gpu}: {m} s{s} finished (exit {p.returncode})", flush=True)
                 del running[gpu]
                 if p.returncode == 0:
-                    finished.append(m)
-                    push(a, m)
+                    finished.append(f"{m}_s{s}")
+                    push(a, f"{m}_s{s}")
                 else:
-                    push_failure(a, m, a.seed)
+                    push_failure(a, m, s)
         if time.time() - last_report > a.progress_every:
             report_progress(a, running, todo, finished)
             last_report = time.time()
